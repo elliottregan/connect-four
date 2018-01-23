@@ -1,20 +1,3 @@
-<template>
-  <div>
-    <button @click="addChip(currentTurn, 0)">Add Chip</button>
-    <button @click="addChip(currentTurn, 1)">Add Chip</button>
-    <button @click="addChip(currentTurn, 2)">Add Chip</button>
-    <button @click="addChip(currentTurn, 3)">Add Chip</button>
-    <button @click="addChip(currentTurn, 4)">Add Chip</button>
-    <button @click="addChip(currentTurn, 5)">Add Chip</button>
-    
-    <board-render :board="board" :chips="chips"></board-render>
-    
-    <pre><strong>Has Won:</strong> *{{hasWon}}*</pre>
-    <pre><strong>Total Turns: </strong>{{totalTurns}}</pre>
-
-    </div>
-</template>
-
 <script>
 import Vue from 'vue';
 import BoardRender from '@/components/BoardRender.vue';
@@ -41,16 +24,27 @@ export default {
   },
   computed: {
     hasWon: function() {
-      return this.checkForWin_ANY(this.board, this.lengthToWin);
+      return this.checkForWin_ANY(this.board, this.lengthToWin) || false;
     },
     currentTurn: function() {
-      console.log(this.totalTurns, this.totalPlayers)
       return this.totalTurns % this.totalPlayers + 1;
     }
   },
   methods: {
+    resetGame() {
+      this.board = [
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+      ];
+      this.chips = [];
+      this.totalTurns = 0;
+    },
     addChip(playerId, column) {
-      if  (this.hasWon) {
+      if (this.hasWon) {
         return;
       }
       this.totalTurns++;
@@ -74,8 +68,6 @@ export default {
     checkForWin_RDown,
     checkForWin_ANY,
   },
-  created() {
-  }
 }
 
 
@@ -157,7 +149,6 @@ function checkForWin_RUp(board, lengthToWin) {
 }
 
 function checkForWin_ANY(board, lengthToWin) {
-  console.log('checking for win...')
   const vert = checkForWin_Vert(board, lengthToWin);
   const hori = checkForWin_Hori(board, lengthToWin);
   const rUp = checkForWin_RUp(board, lengthToWin);
@@ -194,20 +185,99 @@ function checkForWin_ANY(board, lengthToWin) {
 }
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-h1, h2 {
-  font-weight: normal;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
-}
+<template>
+  <div>
+
+    <div class="board-container">
+      <div class="button-wrapper">
+        <button @click="addChip(currentTurn, 0)" class="column-button"></button>
+        <button @click="addChip(currentTurn, 1)" class="column-button"></button>
+        <button @click="addChip(currentTurn, 2)" class="column-button"></button>
+        <button @click="addChip(currentTurn, 3)" class="column-button"></button>
+        <button @click="addChip(currentTurn, 4)" class="column-button"></button>
+        <button @click="addChip(currentTurn, 5)" class="column-button"></button>
+      </div>
+      <board-render :board="board" :chips="chips"></board-render>
+      <article class="message-wrapper" v-if="hasWon">
+        <div class="message-box">
+          <h1 :v-if="hasWon">Player {{hasWon.playerId}} has won!</h1>
+          <button @click="resetGame()" class="reset-button">Play Again?</button>
+        </div>
+      </article>
+    </div>
+
+  </div>
+</template>
+
+<style lang="scss">
+
+  .message-wrapper {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .message-box {
+      background-color: #fff;
+      padding: 1.2rem 4rem;
+      border: 4px solid #000;
+      border-radius: 10px;
+    }
+  }
+
+  .board-container {
+    position: relative;
+    max-width: 400px;
+    margin: auto;
+  }
+
+  .button-wrapper {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    padding: 8px 8px;
+
+
+    .column-button {
+      flex: 1 0 auto;
+      box-sizing: border-box;
+      border: 0;
+      margin: 0;
+      background: transparent;
+      position: relative;
+
+      &::after {
+        display: block;
+        content: '';
+        bottom: -2px;
+        right: -2px;
+        top: -2px;
+        left: -2px;
+        border-radius: 500px;
+        position: absolute;
+        border: 4px solid #fff;
+        transform: scale(.9);
+        opacity: 0;
+        background-color: transparentize(#fff, .9);
+        transition: all 500ms ease-in-out;
+      }
+
+      &:hover {
+        z-index: 2;
+
+        &::after {
+          transition: all 100ms ease-in-out;
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+    }
+  }
+
 </style>
