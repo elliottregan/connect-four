@@ -1,6 +1,8 @@
 <script>
 import Vue from 'vue';
 import BoardRender from '@/components/BoardRender.vue';
+import BoardBus from '@/services/BoardBus.js';
+import GameLogic from '@/services/gameLogicSvc.js';
 
 export default {
   components: {
@@ -18,7 +20,6 @@ export default {
         [0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0],
       ],
-      chips: [],
       totalTurns: 0,
     }
   },
@@ -40,149 +41,42 @@ export default {
         [0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0],
       ];
-      this.chips = [];
       this.totalTurns = 0;
+      BoardBus.$emit('reset-board');
     },
     addChip(playerId, column) {
       if (this.hasWon) {
         return;
       }
       this.totalTurns++;
+
+      // Starting from the bottom of the board, 
+      // check each row to see if the chosen column has a chip.
+      // Add a new chip to the first row that doesn't already have a chip in it.
       for (let row = this.board.length - 1; row >= 0; row--) {
         if (this.board[row][column] === 0) {
-          // Since this.board is an array, we need to trigger a state update
-          // https://vuejs.org/v2/guide/list.html#Caveats 
-          Vue.set(this.board[row], column, playerId);
-          this.chips.push({
+
+          const addedChip = {
             row,
             column,
             playerId,
-          });
+          }
+          // Since this.board is an array, we need to trigger a state update
+          // https://vuejs.org/v2/guide/list.html#Caveats 
+          Vue.set(this.board[row], column, playerId);
+          BoardBus.$emit('chip-added', addedChip);
           return;
         }
       };
     },
-    checkForWin_Vert,
-    checkForWin_Hori,
-    checkForWin_RUp,
-    checkForWin_RDown,
-    checkForWin_ANY,
+    checkForWin_Vert: GameLogic.checkForWin_Vert,
+    checkForWin_Hori: GameLogic.checkForWin_Hori,
+    checkForWin_RUp: GameLogic.checkForWin_RUp,
+    checkForWin_RDown: GameLogic.checkForWin_RDown,
+    checkForWin_ANY: GameLogic.checkForWin_ANY,
   },
-}
+};
 
-
-/* Check for VERTICAL win */
-function checkForWin_Vert(board, lengthToWin) {
-  for (let row = 0; row <= (board.length - lengthToWin); row++) {
-    for (let col = 0; col < board[row].length; col++) {
-
-      const streak = board[row][col] !== 0 &&
-            (board[row][col] === board[row + 1][col] &&
-             board[row][col] === board[row + 2][col] &&
-             board[row][col] === board[row + 3][col]);
-
-      if (streak) {
-        // return the id of player with streak
-        return board[row][col];
-      }
-
-    }
-  }
-}
-
-/* Check for HORIZONTAL win */
-function checkForWin_Hori(board, lengthToWin) {
-  for (let row = 0; row < board.length; row++) {
-    for (let col = 0; col <= (board[row].length - lengthToWin); col++) {
-
-      const streak = board[row][col] !== 0 &&
-            (board[row][col] === board[row][col + 1] &&
-             board[row][col] === board[row][col + 2] &&
-             board[row][col] === board[row][col + 3]);
-
-      if (streak) {
-        // return the id of player with streak
-        return board[row][col];
-      }
-
-    }
-  }
-}
-
-/* Check for RIGHT DOWN win */
-function checkForWin_RDown(board, lengthToWin) {
-  for (let row = 0; row < (board.length - lengthToWin); row++) {
-    for (let col = 0; col < (board[row].length - lengthToWin + 1); col++) {
-
-      const streak = board[row][col] !== 0 &&
-            (board[row][col] === board[row + 1][col + 1] &&
-             board[row][col] === board[row + 2][col + 2] &&
-             board[row][col] === board[row + 3][col + 3]);
-
-      if (streak) {
-        // return the id of player with streak
-        return board[row][col];
-      }
-
-    }
-  }
-}
-
-
-/* Check for RIGHT UP win */
-function checkForWin_RUp(board, lengthToWin) {
-  for (let row = lengthToWin - 1; row < board.length; row++) {
-    for (let col = 0; col < (board.length - lengthToWin + 1); col++) {
-
-      const streak = board[row][col] !== 0 &&
-            (board[row][col] === board[row - 1][col + 1] &&
-             board[row][col] === board[row - 2][col + 2] &&
-             board[row][col] === board[row - 3][col + 3]);
-
-      if (streak) {
-        // return the id of player with streak
-        return board[row][col];
-      }
-
-    }
-  }
-}
-
-function checkForWin_ANY(board, lengthToWin) {
-  const vert = checkForWin_Vert(board, lengthToWin);
-  const hori = checkForWin_Hori(board, lengthToWin);
-  const rUp = checkForWin_RUp(board, lengthToWin);
-  const rDown = checkForWin_RDown(board, lengthToWin);
-
-  if (vert) {
-    return {
-      playerId: vert,
-      type: 'VERTICAL',
-    };
-  }
-
-  if (hori) {
-    return {
-      playerId: hori,
-      type: 'HORIZONTAL',
-    };
-  }
-
-  if (rUp) {
-    return {
-      playerId: rUp,
-      type: 'RIGHT_UP',
-    };
-  }
-
-  if (rDown) {
-    return {
-      playerId: rDown,
-      type: 'RIGHT_DOWN',
-    };
-  }
-
-}
 </script>
 
 <template>
@@ -197,7 +91,7 @@ function checkForWin_ANY(board, lengthToWin) {
         <button @click="addChip(currentTurn, 4)" class="column-button"></button>
         <button @click="addChip(currentTurn, 5)" class="column-button"></button>
       </div>
-      <board-render :board="board" :chips="chips"></board-render>
+      <board-render :board="board"></board-render>
       <article class="message-wrapper" v-if="hasWon">
         <div class="message-box">
           <h1 :v-if="hasWon">Player {{hasWon.playerId}} has won!</h1>
@@ -259,7 +153,7 @@ function checkForWin_ANY(board, lengthToWin) {
         right: -2px;
         top: -2px;
         left: -2px;
-        border-radius: 500px;
+        border-radius: 5px;
         position: absolute;
         border: 4px solid #fff;
         transform: scale(.9);

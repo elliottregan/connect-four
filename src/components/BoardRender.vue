@@ -1,18 +1,12 @@
 <template>
-  <div>
-    <!-- <pre>
-      <span v-for="(row, index) in board" :key="index">
-        <span v-for="(col, index) in row" :key="index">{{col}}</span>
-      </span>
-    </pre> -->
     <article class="board">
-      <svg id="drawTarget" viewBox="0 0 120 120"></svg>
+      <svg :id="`boardId-${this._uid}`" viewBox="0 0 120 120"></svg>
     </article>
-  </div>
 </template>
 
 <script>
 import Snap from 'snapsvg';
+import BoardBus from '@/services/BoardBus.js';
 
 export default {
   data() {
@@ -22,60 +16,74 @@ export default {
         '#915c83',
         '#5d8aa8',
       ],
+      chipSlotRadius: 8,
+      chipSlotPadding: 4,
+      chipRadius: 6,
     }
   },
-  props: ['board', 'chips'],
-  watch: {
-    chips: function(newVal) {
-      // If a new chip was added, draw it.
-      // Save the drawn chip so it can be removed later.
-      if (newVal[newVal.length-1]) {
-        this.chipsAdded.push(this.drawChip(newVal[newVal.length-1].column, newVal[newVal.length-1].row, this.colors[newVal[newVal.length-1].playerId-1]));
-      }
-      // Otherwise, remove all the chips
-      else {
-        this.chipsAdded.forEach( chip => {
-          chip.remove();
-        })
-        this.chipsAdded = [];
-      }
-    }
+  computed: {
+    cellSize: function() {
+      return 2*this.chipSlotRadius + this.chipSlotPadding;
+    },
   },
+  props: ['board'],
   mounted: function() {
-    this.drawTarget = Snap("#drawTarget");
+    // Unique ID for Vue Component.
+    this.drawTarget = Snap(`#boardId-${this._uid}`);
     
+    // Draw the inital empty board (a grid of circles representing empty chip slots)
     this.board.forEach((row, x) => {
       row.forEach((col, y) => {
-        this.drawCircle(x, y);
+        this.drawEmptyCell(x, y);
       });
     });
-    
+
+    // ************************* //
+    // Register Event listeners:
+    // ************************* //
+
+    BoardBus.$on('chip-added', newChip => {
+      // Keep track of all created chips so they can be removed later.
+      this.chipsAdded.push(this.drawChip(newChip.column, newChip.row, this.colors[newChip.playerId-1]));
+    });
+
+    BoardBus.$on('reset-board', () => {
+      // Remove al the chips on the board.
+      this.chipsAdded.forEach( chip => chip.remove());
+      // Now that we've removed all the chips from the view, reset the list of added chips. This doesn't affect the game; ony for cleanup.
+      this.chipsAdded = [];
+    });
+
   },
   methods: {
-    drawCircle(row, column) {
-      const circleRadius = 8;
-      const padding = 4;
-      const cellSize = 2*circleRadius + padding
-      return this.drawTarget.circle(cellSize*row + circleRadius + padding/2, cellSize*column +circleRadius + padding/2, circleRadius);
+    // Draws an enpty cell that will hod a chip.
+    drawEmptyCell(row, column) {
+      const coord = this.cellCenter(row, column);
+      return this.drawTarget.circle(coord.x, coord.y, this.chipSlotRadius);
     },
+    // Draws a new chip on the board.
     drawChip(row, column, color) {
-      const circleRadius = 8;
-      const padding = 4;
-      const chipRadius = 6;
-      const cellSize = 2*circleRadius + padding
-      return this.drawTarget.circle(cellSize*row + circleRadius + padding/2, cellSize*column + circleRadius + padding/2, 0)
+      const coord = this.cellCenter(row, column);
+      return this.drawTarget.circle(coord.x, coord.y, 0)
       .attr({
         fill: color || '#e32636',
       })
       .animate({
-        r: chipRadius
+        r: this.chipRadius,
       }, 300);
-    }
+    },
+    cellCenter: function(row, column) {
+      // Given a Row and Column, returns the coorindates for the center of a cell.
+      // This is used as the center of the circles. 
+      return {
+        x: this.cellSize*row + this.chipSlotRadius + this.chipSlotPadding/2,
+        y: this.cellSize*column + this.chipSlotRadius + this.chipSlotPadding/2,
+      };
+    },
   }
 }
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 
   .board {
