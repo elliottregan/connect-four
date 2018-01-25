@@ -1,6 +1,8 @@
-# connect-four
+# connect[x]
 
-> A Vue.js project
+> A Connect4-style game built with Vue.js.
+> 
+> `rounter/index.js` set the game conditions. 
 
 ## Build Setup
 
@@ -17,5 +19,3 @@ npm run build
 # build for production and view the bundle analyzer report
 npm run build --report
 ```
-
-For a detailed explanation on how things work, check out the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).

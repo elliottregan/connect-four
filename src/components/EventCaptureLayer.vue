@@ -10,7 +10,7 @@ export default {
 <template>
 
   <div class="button-wrapper">
-    <button v-for="(col, i) in board" @click="clickColumn(i)" class="column-button"></button>
+    <button v-for="(col, i) in board" v-bind:key="i" @click="clickColumn(i)" class="column-button"></button>
   </div>
 
 </template>

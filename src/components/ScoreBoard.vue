@@ -8,7 +8,7 @@ export default {
 
   <div class="legend">
     <ul class="player-list">
-      <li v-for="p in players" v-bind:class="{'current-turn': (currentTurn === p.playerId)}" class="player-list-item">
+      <li v-for="p in players" v-bind:key="p" v-bind:class="{'current-turn': (currentTurn === p.playerId)}" class="player-list-item">
         <span class="color-swatch" v-bind:class="{'current-turn': (currentTurn === p.playerId)}" v-bind:style="{backgroundColor: p.color}"></span>
         <span class="player-name">
           <span>Player {{p.playerId}}</span>
