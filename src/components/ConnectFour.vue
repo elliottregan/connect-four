@@ -1,26 +1,24 @@
 <script>
 import Vue from 'vue';
 import BoardRender from '@/components/BoardRender.vue';
+import ScoreBoard from '@/components/ScoreBoard.vue';
+import EventCapture from '@/components/EventCaptureLayer.vue';
 import BoardBus from '@/services/BoardBus.js';
 import GameLogic from '@/services/gameLogicSvc.js';
 
 export default {
   components: {
-    BoardRender
+    BoardRender,
+    ScoreBoard,
+    EventCapture,
   },
-  props: ['total-players'],
+  props: ['total-players', 'colors', 'board-size', 'length-to-win'],
   data() {
     return {
-      lengthToWin: 4,
-      board: [
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-      ],
+      board: [],
       totalTurns: 0,
+      playerColors: [],
+      players: [],
     }
   },
   computed: {
@@ -29,26 +27,39 @@ export default {
     },
     currentTurn: function() {
       return this.totalTurns % this.totalPlayers + 1;
-    }
+    },
+  },
+  created: function() {
+    // Create the board
+    console.log(this.boardSize)
+    this.board = new Array(this.boardSize).fill().map(() => new Array(this.boardSize).fill().map(() => 0));
+    console.log(this.board)
+    
+    // Shuffle all the possible colors, then drop the colors not needed.
+    // This gives you a random color for each player.
+    this.playerColors = this.colors.sort(() => .5 - Math.random()).slice(0,this.totalPlayers);
+
+    // Create an array of players.
+    this.players = [...this.createUsers(this.totalPlayers, this.colors)];
   },
   methods: {
+
+    // Resets the board and total turns back to the inital conditions.
+    // $emits event to tell other components reset as well.
     resetGame() {
-      this.board = [
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-      ];
+      this.board = new Array(this.boardBize).fill().map(() => new Array(this.boardBize).fill().map(() => 0));
       this.totalTurns = 0;
       BoardBus.$emit('reset-board');
     },
-    addChip(playerId, column) {
-      if (this.hasWon) {
+
+    // Given a column index, adds a chip to the first row it can,
+    // starting with the highest row index and working back to 0.
+    // $emits event to tell other components a new chip has been added.
+    addChip(column) {
+      const columnIsFull = this.board[0][column];
+      if (this.hasWon || columnIsFull) {
         return;
       }
-      this.totalTurns++;
 
       // Starting from the bottom of the board, 
       // check each row to see if the chosen column has a chip.
@@ -59,12 +70,18 @@ export default {
           const addedChip = {
             row,
             column,
-            playerId,
+            playerId: this.currentTurn,
           }
+
           // Since this.board is an array, we need to trigger a state update
           // https://vuejs.org/v2/guide/list.html#Caveats 
-          Vue.set(this.board[row], column, playerId);
+          Vue.set(this.board[row], column, this.currentTurn);
+
+          // Let other components know that a new chip has been added
           BoardBus.$emit('chip-added', addedChip);
+          
+          // After finding the location to place the chip, break the loop.
+          this.totalTurns++;
           return;
         }
       };
@@ -74,6 +91,14 @@ export default {
     checkForWin_RUp: GameLogic.checkForWin_RUp,
     checkForWin_RDown: GameLogic.checkForWin_RDown,
     checkForWin_ANY: GameLogic.checkForWin_ANY,
+    createUsers: function* createUsers(n, colors) {
+      for (let i of Array(n).keys()) {
+        yield {
+          playerId: i + 1,
+          color: this.playerColors[i],
+        };
+      }
+    },
   },
 };
 
@@ -82,23 +107,21 @@ export default {
 <template>
   <div>
 
+    <h1>Connect[{{lengthToWin}}]</h1>
+
     <div class="board-container">
-      <div class="button-wrapper">
-        <button @click="addChip(currentTurn, 0)" class="column-button"></button>
-        <button @click="addChip(currentTurn, 1)" class="column-button"></button>
-        <button @click="addChip(currentTurn, 2)" class="column-button"></button>
-        <button @click="addChip(currentTurn, 3)" class="column-button"></button>
-        <button @click="addChip(currentTurn, 4)" class="column-button"></button>
-        <button @click="addChip(currentTurn, 5)" class="column-button"></button>
-      </div>
-      <board-render :board="board"></board-render>
-      <article class="message-wrapper" v-if="hasWon">
-        <div class="message-box">
-          <h1 :v-if="hasWon">Player {{hasWon.playerId}} has won!</h1>
-          <button @click="resetGame()" class="reset-button">Play Again?</button>
-        </div>
-      </article>
+      <event-capture :board="board" :click-column="addChip"></event-capture>
+      <board-render :board="board" :colors="playerColors"></board-render>
     </div>
+
+    <score-board :players="players" :current-turn="currentTurn"></score-board>
+
+    <article class="message-wrapper" v-if="hasWon">
+      <div class="message-box">
+        <h1 :v-if="hasWon">Player {{hasWon.playerId}} has won!</h1>
+        <button @click="resetGame()" class=" btn reset-button">Play Again?</button>
+      </div>
+    </article>
 
   </div>
 </template>
@@ -114,12 +137,29 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10;
 
     .message-box {
       background-color: #fff;
       padding: 1.2rem 4rem;
       border: 4px solid #000;
       border-radius: 10px;
+      box-shadow: 0 0 20px 20px transparentize(#000, .5);
+    }
+
+    .btn {
+      font-size: 1.1em;
+      font-weight: bold;
+      background-color: #fff;
+      border: 4px solid currentColor;
+      border-radius: 8px;
+      padding: .5em 1em;
+      transition: transform 300ms ease;
+
+      &:hover, &:focus {
+        transform: scale(1.05);
+        opacity: .8;
+      }
     }
   }
 
@@ -127,51 +167,6 @@ export default {
     position: relative;
     max-width: 400px;
     margin: auto;
-  }
-
-  .button-wrapper {
-    display: flex;
-    box-sizing: border-box;
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    padding: 8px 8px;
-
-
-    .column-button {
-      flex: 1 0 auto;
-      box-sizing: border-box;
-      border: 0;
-      margin: 0;
-      background: transparent;
-      position: relative;
-
-      &::after {
-        display: block;
-        content: '';
-        bottom: -2px;
-        right: -2px;
-        top: -2px;
-        left: -2px;
-        border-radius: 5px;
-        position: absolute;
-        border: 4px solid #fff;
-        transform: scale(.9);
-        opacity: 0;
-        background-color: transparentize(#fff, .9);
-        transition: all 500ms ease-in-out;
-      }
-
-      &:hover {
-        z-index: 2;
-
-        &::after {
-          transition: all 100ms ease-in-out;
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-    }
   }
 
 </style>

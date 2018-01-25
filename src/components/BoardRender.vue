@@ -1,6 +1,6 @@
 <template>
     <article class="board">
-      <svg :id="`boardId-${this._uid}`" viewBox="0 0 120 120"></svg>
+      <svg :id="`boardId-${this._uid}`" viewBox="0 0 100 100"></svg>
     </article>
 </template>
 
@@ -12,13 +12,9 @@ export default {
   data() {
     return {
       chipsAdded: [],
-      colors: [
-        '#915c83',
-        '#5d8aa8',
-      ],
-      chipSlotRadius: 8,
-      chipSlotPadding: 4,
-      chipRadius: 6,
+      chipSlotRadius: 0,
+      chipSlotPadding: 0,
+      chipRadius: 0,
     }
   },
   computed: {
@@ -26,11 +22,20 @@ export default {
       return 2*this.chipSlotRadius + this.chipSlotPadding;
     },
   },
-  props: ['board'],
+  props: ['board', 'colors'],
+  created: function() {
+    // Set the size of the chips based on the number of columns on the board.
+    const columnWidth = (100) / this.board.length;
+
+    this.chipSlotPadding = (columnWidth * .2);
+    this.chipSlotRadius = (columnWidth * .8 ) / 2;
+    this.chipRadius = columnWidth * .6 / 2;
+  },
   mounted: function() {
     // Unique ID for Vue Component.
     this.drawTarget = Snap(`#boardId-${this._uid}`);
     
+
     // Draw the inital empty board (a grid of circles representing empty chip slots)
     this.board.forEach((row, x) => {
       row.forEach((col, y) => {
@@ -56,7 +61,7 @@ export default {
 
   },
   methods: {
-    // Draws an enpty cell that will hod a chip.
+    // Draws an empty cell that will hod a chip.
     drawEmptyCell(row, column) {
       const coord = this.cellCenter(row, column);
       return this.drawTarget.circle(coord.x, coord.y, this.chipSlotRadius);
